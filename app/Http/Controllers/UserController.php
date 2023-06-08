@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-
+use App\Models\User;
 use Illuminate\Http\Request;
 // use App\Http\Controllers\BaseController as ControllersBaseController;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +23,14 @@ class UserController extends Controller
         else{ 
             return response()->json(['message' => 'Invalid credentials'], 401);
         } 
+    }
+    public function user()
+    {
+        $users = User::all();
+
+        return response()->json([
+            'data' => $users,
+        ]);
     }
     
 }
