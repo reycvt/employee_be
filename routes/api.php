@@ -21,6 +21,7 @@ use App\Http\Controllers\UserController;
 // });
 Route::post('login', [UserController::class, 'login']);
 Route::get('user', [UserController::class, 'user']);
-Route::post('upload', [UploadFile::class,'uploadFile']);
+Route::post('upload', [UploadFile::class,'upload']);
+Route::post('/decrypt', [FileController::class, 'decrypt']);
 
 

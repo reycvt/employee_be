@@ -11,12 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('encrypted', function (Blueprint $table) {
+        Schema::create('encrypteds', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('path');
             $table->timestamps();
-
         });
     }
 
@@ -25,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::dropIfExists('encrypteds');
     }
 };
