@@ -4,12 +4,11 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use phpseclib3\Crypt\AES;
 use App\Models\File;
 
 class FileController extends Controller
 {
-        public function upload(Request $request)
+    public function upload(Request $request)
     {
         $request->validate(['file' => 'required|file|mimes:pdf,jpg,png']);
 
@@ -17,27 +16,23 @@ class FileController extends Controller
         $filename = time().'_'.$file->getClientOriginalName();
         $content = file_get_contents($file);
 
-        // Generate IV
-        $iv = random_bytes(16); // Untuk AES, IV harus memiliki panjang 16 byte
+        // Generate random key and IV
+        $key = random_bytes(32); // 256-bit key for AES-256
+        $iv = random_bytes(16); // 128-bit IV for AES-CBC
 
-        $cipher = new AES('cbc');
-        $key = env('AES_KEY'); // Ambil kunci dari file .env
-        $cipher->setKey($key);
+        // Encrypt fil content
+        $encrypted = openssl_encrypt($content, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
 
-        // Set IV
-        $cipher->setIV($iv);
-
-        // Encrypt
-        $encrypted = $cipher->encrypt($content);
-
+        // Save encrypted file content
         $encryptedPath = 'encrypted/' . $filename;
         Storage::put($encryptedPath, $encrypted);
 
-        // Simpan IV bersama dengan data terenkripsi
+        // Save key and IV along with the encrypted data
         $fileModel = new File();
         $fileModel->filename = $filename;
         $fileModel->encrypted_path = $encryptedPath;
-        $fileModel->iv =  base64_encode($iv); // Simpan IV
+        $fileModel->key = base64_encode($key); // Save key
+        $fileModel->iv = base64_encode($iv); // Save IV
         $fileModel->save();
 
         return response()->json(['message' => 'File uploaded and encrypted successfully'], 200);
@@ -48,18 +43,12 @@ class FileController extends Controller
         $fileModel = File::findOrFail($id);
         $encryptedContent = Storage::get($fileModel->encrypted_path);
 
-        $cipher = new AES('cbc');
-        $key = env('AES_KEY'); // Ambil kunci dari file .env
-        $cipher->setKey($key);
-
-        // Ambil IV dari data terenkripsi
+        // Retrieve key and IV from the database
+        $key = base64_decode($fileModel->key);
         $iv = base64_decode($fileModel->iv);
 
-        // Set IV
-        $cipher->setIV($iv);
-
-        // Decrypt
-        $decrypted = $cipher->decrypt($encryptedContent);
+        // Decrypt content
+        $decrypted = openssl_decrypt($encryptedContent, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
 
         $decryptedPath = 'decrypted/' . $fileModel->filename;
         Storage::put($decryptedPath, $decrypted);
@@ -67,15 +56,15 @@ class FileController extends Controller
         $fileModel->decrypted_path = $decryptedPath;
         $fileModel->save();
 
-        // Hapus path terenkripsi dan IV
-        $fileModel->encrypted_path = 'telah terdekripsi';
-        $fileModel->iv = 'telah terdekripsi';
+        // Remove encrypted path, key, and IV
+        $fileModel->encrypted_path = 'decrypted';
+        $fileModel->key = 'decrypted';
+        $fileModel->iv = 'decrypted';
         $fileModel->decrypted_path = $decryptedPath;
         $fileModel->save();
 
         return response()->json(['message' => 'File decrypted successfully'], 200);
     }
-
     public function encryptedFiles()
     {
         $encryptedFiles = File::whereNotNull('encrypted_path')->get();
@@ -87,7 +76,6 @@ class FileController extends Controller
         $decryptedFiles = File::whereNotNull('decrypted_path')->get();
         return response()->json($decryptedFiles, 200);
     }
-
 
     public function download($id, $type)
     {
