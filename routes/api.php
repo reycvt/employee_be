@@ -30,6 +30,7 @@ Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 // Route::get('users', [UserController::class, 'index'])->middleware('CheckRole:superadmin');
 
+
 //upload
 Route::middleware('auth:api')->group(function () {
     Route::post('upload', [FileController::class, 'upload']);
